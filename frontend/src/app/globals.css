@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+@theme {
+  --color-paper: #f5f6f2;
+  --color-surface: #ffffff;
+  --color-ink: #1a2620;
+  --color-muted: #5e6b63;
+  --color-line: #e3e7e0;
+  --color-leaf: #0e7a46;
+  --color-leaf-dark: #0a5f36;
+  --color-leaf-soft: #e7f3ec;
+  --color-pine: #142a1e;
+  --color-pine-light: #1e3b2b;
+  --color-amber: #e8a23b;
+  --color-amber-soft: #fdf3e2;
+  --color-danger: #d64545;
+  --color-danger-soft: #fbeaea;
+
+  --font-sans: var(--font-be-vietnam), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), monospace;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+.money {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* Cuống hóa đơn: tab active có mép răng cưa nhẹ ở cạnh dưới */
+.receipt-tab {
+  position: relative;
+}
+.receipt-tab[data-active="true"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 4px;
+  background-image: radial-gradient(circle at 4px -1px, transparent 3px, var(--color-surface) 3.5px);
+  background-size: 8px 4px;
+  background-repeat: repeat-x;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--color-leaf);
+  outline-offset: 2px;
+}
+
+@media print {
+  aside {
+    display: none !important;
+  }
+  body {
+    background: white;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
