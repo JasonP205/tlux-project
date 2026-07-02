@@ -28,9 +28,13 @@ export function signToken(user) {
   return jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
 }
 
+// Production: frontend (Vercel) và backend (Render) khác domain
+// → cookie phải SameSite=None + Secure thì trình duyệt mới gửi kèm request cross-site
+const IS_PROD = process.env.NODE_ENV === "production";
+
 export const COOKIE_OPTIONS = {
   httpOnly: true,
-  sameSite: "lax",
-  secure: process.env.NODE_ENV === "production",
+  sameSite: IS_PROD ? "none" : "lax",
+  secure: IS_PROD,
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
