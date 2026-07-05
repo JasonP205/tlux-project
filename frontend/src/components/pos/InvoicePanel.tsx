@@ -211,26 +211,32 @@ export default function InvoicePanel({
                 </div>
                 {/* Giảm giá theo dòng: thu ngân tối đa 20%, admin/quản lý tối đa 100% */}
                 {isDraft && (
-                  <div className="mt-1 flex items-center justify-end gap-1 text-xs text-muted">
-                    <Percent size={11} />
-                    <span>Giảm</span>
-                    <input
-                      type="number"
-                      min={0}
-                      max={maxItemDiscount}
-                      key={`${it.product}-${it.discountPercent}`}
-                      defaultValue={it.discountPercent || ""}
-                      placeholder="0"
-                      className="w-12 rounded-md border border-line bg-surface px-1 py-0.5 text-right text-xs focus:outline-none focus:ring-1 focus:ring-leaf"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") e.currentTarget.blur();
-                      }}
-                      onBlur={(e) => {
-                        const v = Number(e.target.value) || 0;
-                        if (v !== (it.discountPercent || 0)) setItemDiscount(it.product, v);
-                      }}
-                    />
-                    <span>%</span>
+                  <div className="mt-1.5 flex items-center justify-end gap-2 text-sm text-muted">
+                    <span className="flex items-center gap-1 font-medium">
+                      <Percent size={14} className="text-leaf" /> Giảm giá
+                    </span>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min={0}
+                        max={maxItemDiscount}
+                        key={`${it.product}-${it.discountPercent}`}
+                        defaultValue={it.discountPercent || ""}
+                        placeholder="0"
+                        title={`Tối đa ${maxItemDiscount}%`}
+                        className="money w-20 rounded-lg border border-line bg-surface py-1.5 pl-2 pr-7 text-right text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-leaf"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") e.currentTarget.blur();
+                        }}
+                        onBlur={(e) => {
+                          const v = Number(e.target.value) || 0;
+                          if (v !== (it.discountPercent || 0)) setItemDiscount(it.product, v);
+                        }}
+                      />
+                      <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted">
+                        %
+                      </span>
+                    </div>
                   </div>
                 )}
               </li>
