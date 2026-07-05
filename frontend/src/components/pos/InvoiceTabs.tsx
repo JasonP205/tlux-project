@@ -18,7 +18,7 @@ export default function InvoiceTabs({
   onCreate: () => void;
 }) {
   return (
-    <div className="flex items-end gap-1 border-b border-line bg-paper px-4 pt-3">
+    <div className="flex items-end gap-1 overflow-x-auto border-b border-line bg-paper px-3 pt-3 sm:px-4">
       {orders.map((o, i) => (
         <button
           key={o._id}

@@ -12,6 +12,7 @@ export interface User {
 export interface Category {
   _id: string;
   name: string;
+  slug: string;
 }
 
 export interface Product {
@@ -48,6 +49,7 @@ export interface Customer {
   email: string;
   points: number;
   note: string;
+  memberCode: string;
   createdAt: string;
 }
 
@@ -57,6 +59,8 @@ export interface OrderItem {
   barcode: string;
   price: number;
   qty: number;
+  discountPercent: number;
+  promoBarcode?: string | null;
 }
 
 export type OrderStatus = "DRAFT" | "PENDING_PAYMENT" | "PAID" | "CANCELLED";
@@ -67,6 +71,7 @@ export interface Order {
   label: string;
   cashier: { _id: string; name: string } | string;
   customer: Customer | null;
+  pendingCustomer: { name: string; phone: string } | null;
   items: OrderItem[];
   subtotal: number;
   discountCode: string | null;
@@ -74,6 +79,8 @@ export interface Order {
   pointsRedeemed: number;
   pointsDiscount: number;
   pointsEarned: number;
+  vatRate: number;
+  vatAmount: number;
   total: number;
   paymentMethod: "CASH" | "PAYOS" | null;
   status: OrderStatus;
@@ -95,4 +102,28 @@ export interface DiscountCode {
   validFrom: string | null;
   validTo: string | null;
   active: boolean;
+}
+
+export interface Settings {
+  storeName: string;
+  storeSlogan: string;
+  storeAddress: string;
+  storePhone: string;
+  logo: { url: string; publicId: string } | null;
+  wifiName: string;
+  wifiPassword: string;
+  wifiDisplay: "off" | "text" | "qr";
+  vatRate: number;
+  pointsEarnRate: number;
+  pointValue: number;
+  lowStockThreshold: number;
+  expiryWarningDays: number;
+  receiptFooter: string;
+  receiptReturnNote: string;
+}
+
+export interface Branding {
+  storeName: string;
+  storeSlogan: string;
+  logoUrl: string | null;
 }

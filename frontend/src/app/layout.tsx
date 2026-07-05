@@ -22,8 +22,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="vi">
-      <body className={`${beVietnam.variable} ${geistMono.variable} antialiased`}>
+    // Biến font phải nằm trên <html> để --font-sans trong @theme (tham chiếu
+    // var(--font-be-vietnam) tại :root) resolve được — đặt ở <body> là mất font toàn hệ thống
+    <html lang="vi" className={`${beVietnam.variable} ${geistMono.variable}`}>
+      <body className="antialiased">
         <Providers>{children}</Providers>
         <Toaster position="top-center" richColors />
       </body>

@@ -18,6 +18,7 @@ import customerRoutes from "./routes/customers.js";
 import discountRoutes from "./routes/discounts.js";
 import orderRoutes from "./routes/orders.js";
 import paymentRoutes from "./routes/payments.js";
+import settingRoutes from "./routes/settings.js";
 import scanSessionRoutes from "./routes/scanSessions.js";
 
 const app = express();
@@ -57,6 +58,7 @@ app.use("/api/customers", customerRoutes);
 app.use("/api/discounts", discountRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/settings", settingRoutes);
 app.use("/api/scan-sessions", scanSessionRoutes);
 
 app.use(notFound);

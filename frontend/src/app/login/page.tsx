@@ -3,11 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Store } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { btn, input, label } from "@/components/ui";
 import { HOME_BY_ROLE } from "@/components/AppShell";
+import { useBranding } from "@/lib/hooks";
 import type { User } from "@/lib/types";
 
 export default function LoginPage() {
@@ -15,6 +15,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const router = useRouter();
   const qc = useQueryClient();
+  const branding = useBranding().data?.branding;
 
   const login = useMutation({
     mutationFn: () =>
@@ -36,10 +37,9 @@ export default function LoginPage() {
         className="w-full max-w-sm rounded-2xl bg-surface p-8 shadow-xl"
       >
         <div className="mb-6 flex flex-col items-center gap-2">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-leaf text-white">
-            <Store size={24} />
-          </div>
-          <h1 className="text-xl font-extrabold tracking-tight">TLUX</h1>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={branding?.logoUrl ?? "/logo.png"} alt="" className="h-12 w-12 rounded-xl object-contain" />
+          <h1 className="text-xl font-extrabold tracking-tight">{branding?.storeName ?? "TLUX"}</h1>
           <p className="text-sm text-muted">Đăng nhập để bắt đầu ca làm việc</p>
         </div>
         <div className="space-y-4">

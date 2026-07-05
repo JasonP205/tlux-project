@@ -3,6 +3,9 @@ import ScanSession from "../models/ScanSession.js";
 
 let io = null;
 
+// Hóa đơn cuối cùng đã đẩy sang màn hình khách của từng thu ngân (cache trong RAM)
+const lastDisplayOrder = new Map();
+
 export function initSocket(httpServer, corsOptions) {
   io = new Server(httpServer, { cors: corsOptions });
 
@@ -26,6 +29,20 @@ export function initSocket(httpServer, corsOptions) {
     socket.on("scan:barcode", ({ token, barcode }) => {
       if (!token || !barcode) return;
       socket.to(`scan:${token}`).emit("scan:barcode", { barcode });
+    });
+
+    // Màn hình phụ cho khách xem (/display/<cashierId>) join room theo thu ngân.
+    // Gửi ngay trạng thái cuối cùng để màn hình mở sau vẫn thấy hóa đơn đang bán dở.
+    socket.on("display:join", ({ cashierId }) => {
+      if (!cashierId) return;
+      socket.join(`display:${cashierId}`);
+      socket.emit("display:update", { order: lastDisplayOrder.get(cashierId) ?? null });
+    });
+    // POS đẩy hóa đơn đang mở sang màn hình khách mỗi khi thay đổi
+    socket.on("display:update", ({ cashierId, order }) => {
+      if (!cashierId) return;
+      lastDisplayOrder.set(cashierId, order ?? null);
+      socket.to(`display:${cashierId}`).emit("display:update", { order });
     });
 
     // POS theo dõi trạng thái thanh toán PayOS của 1 đơn

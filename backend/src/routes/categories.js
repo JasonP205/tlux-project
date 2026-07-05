@@ -17,12 +17,10 @@ router.post("/", authorize("ADMIN", "MANAGER"), async (req, res) => {
 });
 
 router.put("/:id", authorize("ADMIN", "MANAGER"), async (req, res) => {
-  const category = await Category.findByIdAndUpdate(
-    req.params.id,
-    { name: req.body.name },
-    { new: true, runValidators: true }
-  );
+  const category = await Category.findById(req.params.id);
   if (!category) return res.status(404).json({ message: "Không tìm thấy danh mục" });
+  category.name = req.body.name;
+  await category.save(); // save() để hook tự sinh slug từ tên mới
   res.json({ category });
 });
 

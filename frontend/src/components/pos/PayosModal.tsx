@@ -17,13 +17,14 @@ export default function PayosModal({
 }: {
   order: Order;
   onClose: () => void;
-  onPaid: () => void;
+  onPaid: (paidOrder?: Order) => void;
   onCancel: () => void;
 }) {
-  // Vừa nghe socket, vừa poll dự phòng mỗi 3 giây
+  // Vừa nghe socket (webhook), vừa poll hỏi thẳng PayOS mỗi 3 giây
+  // (webhook không tới được server khi chạy localhost nên poll là đường xác nhận chính ở dev)
   const status = useQuery({
     queryKey: ["order-status", order._id],
-    queryFn: () => api<{ order: Order }>(`/orders/${order._id}`),
+    queryFn: () => api<{ order: Order }>(`/payments/payos/check/${order._id}`),
     refetchInterval: 3000,
   });
 
@@ -41,7 +42,7 @@ export default function PayosModal({
   }, [order._id, onPaid]);
 
   useEffect(() => {
-    if (status.data?.order.status === "PAID") onPaid();
+    if (status.data?.order.status === "PAID") onPaid(status.data.order);
   }, [status.data, onPaid]);
 
   return (
@@ -65,7 +66,7 @@ export default function PayosModal({
         )}
         <div className="flex w-full gap-2 pt-2">
           <button className={`${btn.secondary} flex-1`} onClick={onClose}>
-            Thu sau (giữ đơn)
+            Thu sau — giữ đơn
           </button>
           <button className={`${btn.danger} flex-1`} onClick={onCancel}>
             Hủy đơn

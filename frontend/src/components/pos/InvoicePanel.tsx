@@ -3,6 +3,7 @@
 import {
   Banknote,
   Minus,
+  Percent,
   Plus,
   QrCode,
   Star,
@@ -11,15 +12,21 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import { formatMoney } from "@/lib/format";
+import { formatMoney, itemLineTotal } from "@/lib/format";
 import { btn, input, Badge, Empty } from "@/components/ui";
 import type { Order } from "@/lib/types";
 
-export type ItemInput = { productId: string; qty: number };
+export type ItemInput = {
+  productId: string;
+  qty: number;
+  discountPercent?: number;
+  promoBarcode?: string | null;
+};
 
 export default function InvoicePanel({
   order,
   checkoutPending,
+  maxItemDiscount,
   onCreate,
   onSetItems,
   onUpdate,
@@ -31,6 +38,7 @@ export default function InvoicePanel({
 }: {
   order: Order | null;
   checkoutPending: boolean;
+  maxItemDiscount: number; // trần giảm giá theo dòng của người dùng hiện tại (%)
   onCreate: () => void;
   onSetItems: (items: ItemInput[]) => void;
   onUpdate: (body: Record<string, unknown>) => void;
@@ -51,10 +59,28 @@ export default function InvoicePanel({
     );
 
   const isDraft = order.status === "DRAFT";
-  const toInputs = (transform?: (it: Order["items"][number]) => number) =>
+  const toInputs = (transform?: (it: Order["items"][number]) => number): ItemInput[] =>
     order.items
-      .map((it) => ({ productId: it.product, qty: transform ? transform(it) : it.qty }))
+      .map((it) => ({
+        productId: it.product,
+        qty: transform ? transform(it) : it.qty,
+        discountPercent: it.discountPercent || 0,
+        promoBarcode: it.promoBarcode ?? null,
+      }))
       .filter((it) => it.qty > 0);
+
+  // Đổi % giảm của 1 dòng (gõ tay → xóa tem PMP nếu có, mức mới là quyết định của người dùng)
+  const setItemDiscount = (productId: string, raw: number) => {
+    const percent = Math.min(maxItemDiscount, Math.max(0, Math.round(raw) || 0));
+    onSetItems(
+      order.items.map((it) => ({
+        productId: it.product,
+        qty: it.qty,
+        discountPercent: it.product === productId ? percent : it.discountPercent || 0,
+        promoBarcode: it.product === productId ? null : (it.promoBarcode ?? null),
+      }))
+    );
+  };
 
   return (
     <>
@@ -95,13 +121,30 @@ export default function InvoicePanel({
               </button>
             )}
           </div>
+        ) : order.pendingCustomer ? (
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <UserRound size={16} className="text-amber" />
+              <div>
+                <div className="text-sm font-semibold">{order.pendingCustomer.name}</div>
+                <div className="text-xs text-muted">
+                  {order.pendingCustomer.phone} · <Badge tone="amber">Khách mới — lưu khi thanh toán</Badge>
+                </div>
+              </div>
+            </div>
+            {isDraft && (
+              <button className={btn.ghost} onClick={() => onUpdate({ pendingCustomer: null })}>
+                <X size={14} />
+              </button>
+            )}
+          </div>
         ) : (
           <button
             className="flex w-full items-center gap-2 text-sm text-muted hover:text-leaf cursor-pointer"
             onClick={onPickCustomer}
             disabled={!isDraft}
           >
-            <UserRound size={16} /> Chọn khách hàng (tích điểm)
+            <UserRound size={16} /> Chọn khách hàng
           </button>
         )}
       </div>
@@ -113,48 +156,83 @@ export default function InvoicePanel({
         ) : (
           <ul className="divide-y divide-line">
             {order.items.map((it) => (
-              <li key={it.product} className="flex items-center gap-2 py-2.5">
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-semibold">{it.name}</div>
-                  <div className="money text-xs text-muted">{formatMoney(it.price)}</div>
-                </div>
-                {isDraft ? (
-                  <div className="flex items-center gap-1">
-                    <button
-                      aria-label="Giảm"
-                      className="rounded-md border border-line p-1 hover:bg-paper cursor-pointer"
-                      onClick={() =>
-                        onSetItems(toInputs((x) => (x.product === it.product ? x.qty - 1 : x.qty)))
-                      }
-                    >
-                      <Minus size={13} />
-                    </button>
-                    <span className="money w-7 text-center text-sm font-bold">{it.qty}</span>
-                    <button
-                      aria-label="Tăng"
-                      className="rounded-md border border-line p-1 hover:bg-paper cursor-pointer"
-                      onClick={() =>
-                        onSetItems(toInputs((x) => (x.product === it.product ? x.qty + 1 : x.qty)))
-                      }
-                    >
-                      <Plus size={13} />
-                    </button>
-                    <button
-                      aria-label="Xóa món"
-                      className="ml-1 rounded-md p-1 text-muted hover:bg-danger-soft hover:text-danger cursor-pointer"
-                      onClick={() =>
-                        onSetItems(toInputs((x) => (x.product === it.product ? 0 : x.qty)))
-                      }
-                    >
-                      <Trash2 size={13} />
-                    </button>
+              <li key={it.product} className="py-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold">{it.name}</div>
+                    <div className="money text-xs text-muted">
+                      {it.discountPercent > 0 ? (
+                        <>
+                          <span className="line-through">{formatMoney(it.price)}</span>{" "}
+                          <span className="font-semibold text-leaf">−{it.discountPercent}%</span>
+                        </>
+                      ) : (
+                        formatMoney(it.price)
+                      )}
+                    </div>
                   </div>
-                ) : (
-                  <span className="money text-sm">×{it.qty}</span>
-                )}
-                <div className="money w-20 text-right text-sm font-bold">
-                  {formatMoney(it.price * it.qty)}
+                  {isDraft ? (
+                    <div className="flex items-center gap-1">
+                      <button
+                        aria-label="Giảm"
+                        className="rounded-md border border-line p-1 hover:bg-paper cursor-pointer"
+                        onClick={() =>
+                          onSetItems(toInputs((x) => (x.product === it.product ? x.qty - 1 : x.qty)))
+                        }
+                      >
+                        <Minus size={13} />
+                      </button>
+                      <span className="money w-7 text-center text-sm font-bold">{it.qty}</span>
+                      <button
+                        aria-label="Tăng"
+                        className="rounded-md border border-line p-1 hover:bg-paper cursor-pointer"
+                        onClick={() =>
+                          onSetItems(toInputs((x) => (x.product === it.product ? x.qty + 1 : x.qty)))
+                        }
+                      >
+                        <Plus size={13} />
+                      </button>
+                      <button
+                        aria-label="Xóa món"
+                        className="ml-1 rounded-md p-1 text-muted hover:bg-danger-soft hover:text-danger cursor-pointer"
+                        onClick={() =>
+                          onSetItems(toInputs((x) => (x.product === it.product ? 0 : x.qty)))
+                        }
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="money text-sm">×{it.qty}</span>
+                  )}
+                  <div className="money w-20 text-right text-sm font-bold">
+                    {formatMoney(itemLineTotal(it))}
+                  </div>
                 </div>
+                {/* Giảm giá theo dòng: thu ngân tối đa 20%, admin/quản lý tối đa 100% */}
+                {isDraft && (
+                  <div className="mt-1 flex items-center justify-end gap-1 text-xs text-muted">
+                    <Percent size={11} />
+                    <span>Giảm</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={maxItemDiscount}
+                      key={`${it.product}-${it.discountPercent}`}
+                      defaultValue={it.discountPercent || ""}
+                      placeholder="0"
+                      className="w-12 rounded-md border border-line bg-surface px-1 py-0.5 text-right text-xs focus:outline-none focus:ring-1 focus:ring-leaf"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") e.currentTarget.blur();
+                      }}
+                      onBlur={(e) => {
+                        const v = Number(e.target.value) || 0;
+                        if (v !== (it.discountPercent || 0)) setItemDiscount(it.product, v);
+                      }}
+                    />
+                    <span>%</span>
+                  </div>
+                )}
               </li>
             ))}
           </ul>
@@ -211,6 +289,12 @@ export default function InvoicePanel({
             <div className="flex justify-between text-leaf">
               <span>Đổi {order.pointsRedeemed} điểm</span>
               <span className="money">−{formatMoney(order.pointsDiscount)}</span>
+            </div>
+          )}
+          {order.vatAmount > 0 && (
+            <div className="flex justify-between text-muted">
+              <span>VAT ({order.vatRate}%)</span>
+              <span className="money">+{formatMoney(order.vatAmount)}</span>
             </div>
           )}
           <div className="flex items-baseline justify-between pt-1">

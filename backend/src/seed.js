@@ -3,7 +3,7 @@ dotenv.config();
 import mongoose from "mongoose";
 import connectDB from "./lib/db.js";
 import User from "./models/User.js";
-import Category from "./models/Category.js";
+import Category, { toSlug } from "./models/Category.js";
 import Product from "./models/Product.js";
 import InventoryBatch from "./models/InventoryBatch.js";
 import Customer from "./models/Customer.js";
@@ -29,7 +29,11 @@ console.log("✓ Nhân viên: admin / quanly / thukho / thungan (mật khẩu: 1
 const categoryNames = ["Đồ uống", "Bánh kẹo", "Sữa & Trứng", "Mì & Thực phẩm khô", "Hóa mỹ phẩm"];
 const categories = {};
 for (const name of categoryNames) {
-  const cat = await Category.findOneAndUpdate({ name }, { name }, { upsert: true, new: true });
+  const cat = await Category.findOneAndUpdate(
+    { name },
+    { name, slug: toSlug(name) },
+    { upsert: true, new: true }
+  );
   categories[name] = cat._id;
 }
 console.log("✓ Danh mục:", categoryNames.join(", "));
@@ -101,19 +105,27 @@ const customers = [
   { name: "Phạm Minh Châu", phone: "0987654321", points: 0 },
 ];
 for (const c of customers) {
-  await Customer.updateOne({ phone: c.phone }, { $setOnInsert: c }, { upsert: true });
+  await Customer.updateOne(
+    { phone: c.phone },
+    { $setOnInsert: { ...c, memberCode: `TLX${c.phone}` } },
+    { upsert: true }
+  );
 }
-console.log("✓ Khách hàng mẫu: 3");
+// Backfill mã thẻ thành viên cho khách cũ chưa có
+const noCode = await Customer.find({ memberCode: { $in: [null, ""] } });
+for (const c of noCode) await c.save();
+console.log("✓ Khách hàng mẫu: 3 (mã thẻ TLX<SĐT>)");
 
 // ==== Mã giảm giá ====
+// Mã bắt đầu bằng PM để POS nhận diện khi quét barcode
 const discounts = [
-  { code: "GIAM10", type: "PERCENT", value: 10, maxDiscount: 50000, minOrderTotal: 100000, usageLimit: 100 },
-  { code: "KHAITRUONG", type: "FIXED", value: 20000, minOrderTotal: 50000, usageLimit: 50 },
+  { code: "PMGIAM10", type: "PERCENT", value: 10, maxDiscount: 50000, minOrderTotal: 100000, usageLimit: 100 },
+  { code: "PMKHAITRUONG", type: "FIXED", value: 20000, minOrderTotal: 50000, usageLimit: 50 },
 ];
 for (const d of discounts) {
   await DiscountCode.updateOne({ code: d.code }, { $setOnInsert: d }, { upsert: true });
 }
-console.log("✓ Mã giảm giá: GIAM10 (10%, tối đa 50k, đơn từ 100k), KHAITRUONG (giảm 20k, đơn từ 50k)");
+console.log("✓ Mã giảm giá: PMGIAM10 (10%, tối đa 50k, đơn từ 100k), PMKHAITRUONG (giảm 20k, đơn từ 50k)");
 
 // ==== Đồng bộ Elasticsearch ====
 try {

@@ -21,6 +21,20 @@ router.get("/", async (req, res) => {
   res.json({ customers, total, page: Number(page), limit: Number(limit) });
 });
 
+// Tra cứu chính xác theo SĐT (POS: kiểm tra khách đã tồn tại chưa)
+router.get("/by-phone/:phone", async (req, res) => {
+  const customer = await Customer.findOne({ phone: req.params.phone.trim() });
+  if (!customer) return res.status(404).json({ message: "Chưa có khách hàng với số điện thoại này" });
+  res.json({ customer });
+});
+
+// Tra cứu theo mã thẻ thành viên (quét barcode TLX…)
+router.get("/by-code/:code", async (req, res) => {
+  const customer = await Customer.findOne({ memberCode: req.params.code.trim().toUpperCase() });
+  if (!customer) return res.status(404).json({ message: "Không tìm thấy thẻ thành viên này" });
+  res.json({ customer });
+});
+
 router.get("/:id", async (req, res) => {
   const customer = await Customer.findById(req.params.id);
   if (!customer) return res.status(404).json({ message: "Không tìm thấy khách hàng" });

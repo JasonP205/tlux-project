@@ -3,14 +3,17 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Plus, Trash2, Power } from "lucide-react";
+import { Plus, Trash2, Power, Barcode } from "lucide-react";
 import { api } from "@/lib/api";
 import { formatMoney, formatDate } from "@/lib/format";
-import { btn, input, label, Modal, Badge, Empty, PageTitle } from "@/components/ui";
+import { btn, input, label, Modal, Badge, Empty, PageTitle, AppSelect, ConfirmDialog } from "@/components/ui";
+import { BarcodeModal } from "@/components/BarcodeCard";
 import type { DiscountCode } from "@/lib/types";
 
 export default function DiscountsClient({ initial }: { initial?: { discounts: DiscountCode[] } }) {
   const [creating, setCreating] = useState(false);
+  const [viewingBarcode, setViewingBarcode] = useState<DiscountCode | null>(null);
+  const [deleting, setDeleting] = useState<DiscountCode | null>(null);
   const qc = useQueryClient();
 
   const discounts = useQuery({
@@ -35,7 +38,7 @@ export default function DiscountsClient({ initial }: { initial?: { discounts: Di
   });
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <PageTitle
         title="Mã giảm giá"
         action={
@@ -44,8 +47,8 @@ export default function DiscountsClient({ initial }: { initial?: { discounts: Di
           </button>
         }
       />
-      <div className="overflow-hidden rounded-xl border border-line bg-surface">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto rounded-xl border border-line bg-surface">
+        <table className="w-full min-w-[720px] text-sm">
           <thead className="bg-paper text-left text-xs font-semibold text-muted">
             <tr>
               <th className="px-4 py-3">Mã</th>
@@ -81,14 +84,18 @@ export default function DiscountsClient({ initial }: { initial?: { discounts: Di
                   {d.active ? <Badge tone="green">Đang chạy</Badge> : <Badge tone="gray">Tạm khóa</Badge>}
                 </td>
                 <td className="px-4 py-2.5 text-right">
+                  <button
+                    className={btn.ghost}
+                    onClick={() => setViewingBarcode(d)}
+                    aria-label="Xem mã vạch"
+                    title="Xem / in mã vạch"
+                  >
+                    <Barcode size={15} />
+                  </button>
                   <button className={btn.ghost} onClick={() => toggle.mutate(d)} aria-label="Bật/tắt">
                     <Power size={15} />
                   </button>
-                  <button
-                    className={btn.ghost}
-                    onClick={() => confirm(`Xóa mã ${d.code}?`) && remove.mutate(d._id)}
-                    aria-label="Xóa"
-                  >
+                  <button className={btn.ghost} onClick={() => setDeleting(d)} aria-label="Xóa">
                     <Trash2 size={15} />
                   </button>
                 </td>
@@ -99,6 +106,23 @@ export default function DiscountsClient({ initial }: { initial?: { discounts: Di
         {discounts.data?.discounts.length === 0 && <Empty message="Chưa có mã giảm giá nào" />}
       </div>
       {creating && <DiscountForm onClose={() => setCreating(false)} />}
+      {viewingBarcode && (
+        <BarcodeModal
+          title="Tem mã khuyến mãi"
+          subtitle={`Quét tại quầy để áp mã ${viewingBarcode.code} vào hóa đơn`}
+          value={viewingBarcode.code}
+          onClose={() => setViewingBarcode(null)}
+        />
+      )}
+      <ConfirmDialog
+        open={deleting !== null}
+        title="Xóa mã giảm giá?"
+        description={deleting ? `Mã ${deleting.code} sẽ bị xóa vĩnh viễn.` : undefined}
+        confirmLabel="Xóa mã"
+        danger
+        onConfirm={() => deleting && remove.mutate(deleting._id)}
+        onClose={() => setDeleting(null)}
+      />
     </div>
   );
 }
@@ -137,16 +161,20 @@ function DiscountForm({ onClose }: { onClose: () => void }) {
         }}
       >
         <div>
-          <label className={label}>Mã (khách nhập tại quầy)</label>
-          <input name="code" required autoFocus className={`${input} font-mono uppercase`} placeholder="VD: TET2026" />
+          <label className={label}>Mã khuyến mãi</label>
+          <input name="code" required autoFocus className={`${input} font-mono uppercase`} placeholder="VD: TET2026 → PMTET2026" />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={label}>Loại giảm</label>
-            <select className={input} value={type} onChange={(e) => setType(e.target.value as "PERCENT" | "FIXED")}>
-              <option value="PERCENT">Theo phần trăm (%)</option>
-              <option value="FIXED">Số tiền cố định (đ)</option>
-            </select>
+            <AppSelect
+              value={type}
+              onValueChange={(v) => setType(v as "PERCENT" | "FIXED")}
+              options={[
+                { value: "PERCENT", label: "Theo phần trăm (%)" },
+                { value: "FIXED", label: "Số tiền cố định (đ)" },
+              ]}
+            />
           </div>
           <div>
             <label className={label}>{type === "PERCENT" ? "Phần trăm giảm" : "Số tiền giảm (đ)"}</label>

@@ -7,13 +7,10 @@ import Customer from "../models/Customer.js";
 import DiscountCode from "../models/DiscountCode.js";
 import { protect, authorize } from "../middleware/auth.js";
 import { getPayOS } from "../lib/payos.js";
+import { getSettings } from "../lib/settings.js";
 
 const router = Router();
 router.use(protect);
-
-// Tích điểm: 1 điểm / 10.000đ; đổi điểm: 1 điểm = 100đ
-export const POINTS_EARN_RATE = 10000;
-export const POINT_VALUE = 100;
 
 function genOrderCode() {
   const d = new Date();
@@ -33,9 +30,17 @@ function sortFEFO(batches) {
   });
 }
 
+// Thành tiền 1 dòng sau giảm giá theo sản phẩm
+export function lineTotal(it) {
+  return Math.round((it.price * it.qty * (100 - (it.discountPercent || 0))) / 100);
+}
+
+// VAT tính trên (tạm tính − giảm giá − điểm đã đổi), theo order.vatRate đã chốt trên hóa đơn
 function computeTotals(order) {
-  order.subtotal = order.items.reduce((sum, it) => sum + it.price * it.qty, 0);
-  order.total = Math.max(0, order.subtotal - order.discountAmount - order.pointsDiscount);
+  order.subtotal = order.items.reduce((sum, it) => sum + lineTotal(it), 0);
+  const taxable = Math.max(0, order.subtotal - order.discountAmount - order.pointsDiscount);
+  order.vatAmount = Math.round((taxable * (order.vatRate || 0)) / 100);
+  order.total = taxable + order.vatAmount;
 }
 
 // Hoàn kho + hoàn điểm + hoàn lượt mã giảm giá (khi hủy đơn PENDING_PAYMENT)
@@ -72,6 +77,7 @@ router.post("/", async (req, res) => {
     code: genOrderCode(),
     label: req.body.label || "",
     cashier: req.user._id,
+    vatRate: (await getSettings()).vatRate,
   });
   res.status(201).json({ order });
 });
@@ -88,10 +94,12 @@ router.get("/drafts", async (req, res) => {
 });
 
 router.get("/", authorize("ADMIN", "MANAGER", "CASHIER"), async (req, res) => {
-  const { status, from, to, page = 1, limit = 20 } = req.query;
+  const { status, from, to, q, page = 1, limit = 20 } = req.query;
   const filter = {};
   if (status) filter.status = status;
   else filter.status = { $ne: "DRAFT" };
+  // Tra cứu theo mã hóa đơn (quét barcode trên hóa đơn in hoặc gõ tay)
+  if (q) filter.code = { $regex: q.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" };
   if (req.user.role === "CASHIER") filter.cashier = req.user._id;
   if (from || to) {
     filter.createdAt = {};
@@ -115,9 +123,10 @@ router.get("/stats", authorize("ADMIN", "MANAGER"), async (req, res) => {
   const now = new Date();
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const last7 = new Date(startOfDay.getTime() - 6 * 24 * 60 * 60 * 1000);
+  const last30 = new Date(startOfDay.getTime() - 29 * 24 * 60 * 60 * 1000);
+  const last12Months = new Date(now.getFullYear(), now.getMonth() - 11, 1);
 
-  const [today, month, daily, topProducts] = await Promise.all([
+  const [today, month, daily, monthly, byPayment, topProducts] = await Promise.all([
     Order.aggregate([
       { $match: { status: "PAID", paidAt: { $gte: startOfDay } } },
       { $group: { _id: null, revenue: { $sum: "$total" }, count: { $sum: 1 } } },
@@ -127,7 +136,7 @@ router.get("/stats", authorize("ADMIN", "MANAGER"), async (req, res) => {
       { $group: { _id: null, revenue: { $sum: "$total" }, count: { $sum: 1 } } },
     ]),
     Order.aggregate([
-      { $match: { status: "PAID", paidAt: { $gte: last7 } } },
+      { $match: { status: "PAID", paidAt: { $gte: last30 } } },
       {
         $group: {
           _id: { $dateToString: { format: "%Y-%m-%d", date: "$paidAt", timezone: "+07:00" } },
@@ -136,6 +145,23 @@ router.get("/stats", authorize("ADMIN", "MANAGER"), async (req, res) => {
         },
       },
       { $sort: { _id: 1 } },
+    ]),
+    // Doanh thu 12 tháng gần nhất (biểu đồ cột)
+    Order.aggregate([
+      { $match: { status: "PAID", paidAt: { $gte: last12Months } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m", date: "$paidAt", timezone: "+07:00" } },
+          revenue: { $sum: "$total" },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]),
+    // Cơ cấu theo phương thức thanh toán trong tháng (biểu đồ tròn)
+    Order.aggregate([
+      { $match: { status: "PAID", paidAt: { $gte: startOfMonth } } },
+      { $group: { _id: "$paymentMethod", revenue: { $sum: "$total" }, count: { $sum: 1 } } },
     ]),
     Order.aggregate([
       { $match: { status: "PAID", paidAt: { $gte: startOfMonth } } },
@@ -157,6 +183,8 @@ router.get("/stats", authorize("ADMIN", "MANAGER"), async (req, res) => {
     today: today[0] || { revenue: 0, count: 0 },
     month: month[0] || { revenue: 0, count: 0 },
     daily,
+    monthly,
+    byPayment,
     topProducts,
   });
 });
@@ -190,6 +218,9 @@ router.put("/:id/items", async (req, res) => {
   ]);
   const stockMap = new Map(stocks.map((s) => [s._id.toString(), s.stock]));
 
+  // Trần giảm giá theo dòng: thu ngân 20%, admin/quản lý 100%
+  const discountCap = ["ADMIN", "MANAGER"].includes(req.user.role) ? 100 : 20;
+
   const newItems = [];
   for (const it of items) {
     const product = productMap.get(it.productId);
@@ -198,19 +229,70 @@ router.put("/:id/items", async (req, res) => {
     const stock = stockMap.get(it.productId) || 0;
     if (qty > stock)
       return res.status(400).json({ message: `"${product.name}" chỉ còn ${stock} ${product.unit} trong kho` });
+
+    const discountPercent = Math.min(100, Math.max(0, Math.round(Number(it.discountPercent) || 0)));
+    const promoBarcode = it.promoBarcode ? String(it.promoBarcode) : null;
+    if (discountPercent > discountCap) {
+      // Vượt trần chỉ khi quét tem PMP admin in sẵn: PMP<%><mã vạch gốc>.
+      // Mã vạch gốc thường toàn chữ số nên phần % nhập nhằng — thử tách 3/2/1 chữ số
+      // và yêu cầu khớp đúng cả mức giảm lẫn mã vạch sản phẩm
+      let valid = false;
+      if (promoBarcode && /^PMP/i.test(promoBarcode)) {
+        const rest = promoBarcode.slice(3);
+        for (const len of [3, 2, 1]) {
+          const pct = rest.slice(0, len);
+          if (rest.length > len && /^\d+$/.test(pct) && Number(pct) === discountPercent && rest.slice(len) === product.barcode) {
+            valid = true;
+            break;
+          }
+        }
+      }
+      if (!valid)
+        return res
+          .status(400)
+          .json({ message: `Bạn chỉ được giảm tối đa ${discountCap}% mỗi sản phẩm` });
+    }
+
     newItems.push({
       product: product._id,
       name: product.name,
       barcode: product.barcode,
       price: product.price,
       qty,
+      discountPercent,
+      promoBarcode: discountPercent > 0 ? promoBarcode : null,
       batchAllocations: [],
     });
   }
-  order.items = newItems;
-  computeTotals(order);
-  await order.save();
-  res.json({ order });
+  const subtotal = newItems.reduce((s, it) => s + lineTotal(it), 0);
+
+  // Giỏ hàng đổi → tính lại tiền giảm của mã đang áp (gỡ mã nếu không còn đủ điều kiện)
+  let { discountCode, discountAmount } = order;
+  if (discountCode) {
+    const discount = await DiscountCode.findOne({ code: discountCode });
+    const result = discount ? discount.computeDiscount(subtotal) : { error: true };
+    if (result.error) {
+      discountCode = null;
+      discountAmount = 0;
+    } else {
+      discountAmount = result.amount;
+    }
+  }
+  // VAT lấy theo cài đặt hiện hành (mức mới áp dụng cho lần sửa hóa đơn tiếp theo)
+  const vatRate = (await getSettings()).vatRate || 0;
+  const taxable = Math.max(0, subtotal - discountAmount - order.pointsDiscount);
+  const vatAmount = Math.round((taxable * vatRate) / 100);
+  const total = taxable + vatAmount;
+
+  // Ghi atomic thay vì save(): click nhanh ở POS bắn nhiều request song song,
+  // route này ghi đè nguyên danh sách items nên request tới sau thắng — không VersionError
+  const updated = await Order.findOneAndUpdate(
+    { _id: order._id, status: "DRAFT" },
+    { items: newItems, discountCode, discountAmount, subtotal, vatRate, vatAmount, total },
+    { new: true }
+  ).populate("customer");
+  if (!updated) return res.status(400).json({ message: "Chỉ sửa được hóa đơn nháp" });
+  res.json({ order: updated });
 });
 
 // Cập nhật khách hàng / mã giảm giá / điểm đổi / nhãn tab
@@ -220,7 +302,7 @@ router.put("/:id", async (req, res) => {
   if (order.status !== "DRAFT")
     return res.status(400).json({ message: "Chỉ sửa được hóa đơn nháp" });
 
-  const { customerId, discountCode, pointsRedeemed, label } = req.body;
+  const { customerId, pendingCustomer, discountCode, pointsRedeemed, label } = req.body;
 
   if (label !== undefined) order.label = label;
 
@@ -229,10 +311,33 @@ router.put("/:id", async (req, res) => {
       const customer = await Customer.findById(customerId);
       if (!customer) return res.status(404).json({ message: "Không tìm thấy khách hàng" });
       order.customer = customer._id;
+      order.pendingCustomer = null;
     } else {
       order.customer = null;
       order.pointsRedeemed = 0;
       order.pointsDiscount = 0;
+    }
+  }
+
+  // Khách mới nhập tại quầy: chỉ ghi tạm trên hóa đơn, tạo Customer khi thanh toán thành công
+  if (pendingCustomer !== undefined) {
+    if (pendingCustomer) {
+      const name = (pendingCustomer.name || "").trim();
+      const phone = (pendingCustomer.phone || "").trim();
+      if (!name || !phone) return res.status(400).json({ message: "Thiếu tên hoặc số điện thoại khách mới" });
+      const existing = await Customer.findOne({ phone });
+      if (existing) {
+        // SĐT đã có trong hệ thống → gán luôn khách cũ
+        order.customer = existing._id;
+        order.pendingCustomer = null;
+      } else {
+        order.pendingCustomer = { name, phone };
+        order.customer = null;
+        order.pointsRedeemed = 0;
+        order.pointsDiscount = 0;
+      }
+    } else {
+      order.pendingCustomer = null;
     }
   }
 
@@ -261,9 +366,10 @@ router.put("/:id", async (req, res) => {
         return res.status(400).json({ message: `Khách chỉ có ${customer.points} điểm` });
     }
     order.pointsRedeemed = pts;
-    order.pointsDiscount = pts * POINT_VALUE;
+    order.pointsDiscount = pts * (await getSettings()).pointValue;
   }
 
+  order.vatRate = (await getSettings()).vatRate || 0;
   computeTotals(order);
   await order.save();
   await order.populate("customer");
@@ -286,6 +392,17 @@ router.post("/:id/checkout", async (req, res) => {
   const session = await mongoose.startSession();
   try {
     await session.withTransaction(async () => {
+      // Khách mới nhập tại quầy → lưu vào hệ thống ngay lúc chốt thanh toán
+      if (!order.customer && order.pendingCustomer?.phone) {
+        const { name, phone } = order.pendingCustomer;
+        let customer = await Customer.findOne({ phone }).session(session);
+        if (!customer) {
+          [customer] = await Customer.create([{ name, phone }], { session });
+        }
+        order.customer = customer._id;
+        order.pendingCustomer = null;
+      }
+
       // Xác thực lại mã giảm giá và tăng lượt dùng
       if (order.discountCode) {
         const discount = await DiscountCode.findOne({ code: order.discountCode }).session(session);
@@ -329,6 +446,8 @@ router.post("/:id/checkout", async (req, res) => {
         item.batchAllocations = allocations;
       }
 
+      const settings = await getSettings();
+      order.vatRate = settings.vatRate || 0;
       computeTotals(order);
       order.paymentMethod = paymentMethod;
 
@@ -336,7 +455,7 @@ router.post("/:id/checkout", async (req, res) => {
         order.status = "PAID";
         order.paidAt = new Date();
         if (order.customer) {
-          order.pointsEarned = Math.floor(order.total / POINTS_EARN_RATE);
+          order.pointsEarned = Math.floor(order.total / settings.pointsEarnRate);
           if (order.pointsEarned > 0)
             await Customer.updateOne(
               { _id: order.customer },

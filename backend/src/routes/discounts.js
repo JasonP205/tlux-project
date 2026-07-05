@@ -16,8 +16,10 @@ router.post("/", authorize("ADMIN", "MANAGER"), async (req, res) => {
     return res.status(400).json({ message: "Thiếu mã, loại hoặc giá trị giảm" });
   if (type === "PERCENT" && (value <= 0 || value > 100))
     return res.status(400).json({ message: "Phần trăm giảm phải trong khoảng 1-100" });
+  // Mã luôn bắt đầu bằng PM để POS nhận diện là mã khuyến mãi khi quét barcode
+  const normalized = code.toUpperCase().trim();
   const discount = await DiscountCode.create({
-    code,
+    code: normalized.startsWith("PM") ? normalized : `PM${normalized}`,
     type,
     value,
     maxDiscount: maxDiscount ?? null,

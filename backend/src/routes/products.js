@@ -2,6 +2,7 @@ import { Router } from "express";
 import multer from "multer";
 import mongoose from "mongoose";
 import Product from "../models/Product.js";
+import Category from "../models/Category.js";
 import InventoryBatch from "../models/InventoryBatch.js";
 import { protect, authorize } from "../middleware/auth.js";
 import { uploadImage, deleteImage } from "../lib/cloudinary.js";
@@ -37,7 +38,14 @@ router.get("/", async (req, res) => {
   const { q, category, page = 1, limit = 20, includeInactive } = req.query;
   const filter = {};
   if (!includeInactive) filter.active = true;
-  if (category) filter.category = category;
+  if (category) {
+    // Nhận cả ObjectId lẫn slug (URL dạng /products?category=banhkeo)
+    if (mongoose.isValidObjectId(category)) filter.category = category;
+    else {
+      const cat = await Category.findOne({ slug: category });
+      filter.category = cat?._id ?? null;
+    }
+  }
   if (q) filter.$or = [{ name: { $regex: q, $options: "i" } }, { barcode: q }];
 
   const [products, total] = await Promise.all([
@@ -77,7 +85,10 @@ router.get("/search", async (req, res) => {
 });
 
 router.get("/barcode/:code", async (req, res) => {
-  const product = await Product.findOne({ barcode: req.params.code, active: true }).populate("category");
+  // includeInactive: nhập kho cần thấy cả hàng ngừng kinh doanh (quét lại → kích hoạt bán lại)
+  const filter = { barcode: req.params.code };
+  if (!req.query.includeInactive) filter.active = true;
+  const product = await Product.findOne(filter).populate("category");
   if (!product) return res.status(404).json({ message: "Không tìm thấy sản phẩm với mã này" });
   const [withStock] = await attachStock([product]);
   res.json({ product: withStock });
@@ -93,26 +104,54 @@ router.get("/:id", async (req, res) => {
   res.json({ product: withStock, batches });
 });
 
-router.post("/", authorize("ADMIN", "MANAGER"), upload.single("image"), async (req, res) => {
+// WAREHOUSE được tạo sản phẩm để đăng ký hàng mới ngay lúc nhập kho (sửa/xóa vẫn ADMIN/MANAGER)
+router.post("/", authorize("ADMIN", "MANAGER", "WAREHOUSE"), upload.single("image"), async (req, res) => {
   const { name, barcode, price, costPrice, unit, category, description } = req.body;
   if (!name || !barcode || price == null)
     return res.status(400).json({ message: "Thiếu tên, mã vạch hoặc giá bán" });
+
+  // Mã vạch trùng sản phẩm ngừng kinh doanh → kích hoạt bán lại với thông tin mới
+  // (giữ nguyên _id nên lịch sử lô nhập/đơn hàng cũ vẫn liên kết đúng)
+  const existing = await Product.findOne({ barcode });
+  if (existing?.active)
+    return res
+      .status(409)
+      .json({ message: `Mã vạch này đã thuộc sản phẩm đang bán: ${existing.name}` });
 
   let image = { url: null, publicId: null };
   if (req.file) {
     const uploaded = await uploadImage(req.file.buffer);
     image = { url: uploaded.secure_url, publicId: uploaded.public_id };
   }
-  const product = await Product.create({
-    name,
-    barcode,
-    price,
-    costPrice: costPrice || 0,
-    unit: unit || "cái",
-    category: category || null,
-    description: description || "",
-    image,
-  });
+
+  let product;
+  if (existing) {
+    existing.set({
+      name,
+      price,
+      costPrice: costPrice || 0,
+      unit: unit || "cái",
+      category: category || null,
+      description: description || "",
+      active: true,
+    });
+    if (req.file) {
+      await deleteImage(existing.image?.publicId);
+      existing.image = image;
+    }
+    product = await existing.save();
+  } else {
+    product = await Product.create({
+      name,
+      barcode,
+      price,
+      costPrice: costPrice || 0,
+      unit: unit || "cái",
+      category: category || null,
+      description: description || "",
+      image,
+    });
+  }
   await syncES(product);
   res.status(201).json({ product });
 });

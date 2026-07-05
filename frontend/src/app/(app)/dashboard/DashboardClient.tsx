@@ -2,15 +2,57 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { Banknote, ReceiptText, CalendarDays, TrendingUp } from "lucide-react";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Tooltip,
+  Legend,
+  Filler,
+} from "chart.js";
+import { Line, Bar, Doughnut } from "react-chartjs-2";
 import { api } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
 import { Empty, PageTitle } from "@/components/ui";
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Tooltip,
+  Legend,
+  Filler
+);
 
 export interface Stats {
   today: { revenue: number; count: number };
   month: { revenue: number; count: number };
   daily: { _id: string; revenue: number; count: number }[];
+  monthly: { _id: string; revenue: number; count: number }[];
+  byPayment: { _id: "CASH" | "PAYOS"; revenue: number; count: number }[];
   topProducts: { _id: string; name: string; qty: number; revenue: number }[];
+}
+
+const LEAF = "#0e7a46";
+const AMBER = "#e8a23b";
+const PINE = "#142a1e";
+const GRID = "#e3e7e0";
+const MUTED = "#5e6b63";
+
+const PAYMENT_LABELS: Record<string, string> = { CASH: "Tiền mặt", PAYOS: "Chuyển khoản" };
+
+function moneyTicks(v: number | string) {
+  const n = Number(v);
+  if (n >= 1_000_000) return `${(n / 1_000_000).toLocaleString("vi-VN")}tr`;
+  if (n >= 1_000) return `${(n / 1_000).toLocaleString("vi-VN")}k`;
+  return `${n}`;
 }
 
 export default function DashboardClient({ initial }: { initial?: Stats }) {
@@ -22,10 +64,78 @@ export default function DashboardClient({ initial }: { initial?: Stats }) {
   });
 
   const s = stats.data;
-  const maxDaily = Math.max(1, ...(s?.daily ?? []).map((d) => d.revenue));
+
+  const lineData = {
+    labels: (s?.daily ?? []).map((d) =>
+      new Date(d._id).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" })
+    ),
+    datasets: [
+      {
+        label: "Doanh thu",
+        data: (s?.daily ?? []).map((d) => d.revenue),
+        borderColor: LEAF,
+        backgroundColor: "rgba(14, 122, 70, 0.12)",
+        fill: true,
+        tension: 0.35,
+        pointRadius: 3,
+        pointBackgroundColor: LEAF,
+      },
+    ],
+  };
+
+  const barData = {
+    labels: (s?.monthly ?? []).map((m) => {
+      const [y, mo] = m._id.split("-");
+      return `${mo}/${y.slice(2)}`;
+    }),
+    datasets: [
+      {
+        label: "Doanh thu",
+        data: (s?.monthly ?? []).map((m) => m.revenue),
+        backgroundColor: LEAF,
+        borderRadius: 6,
+        maxBarThickness: 36,
+      },
+    ],
+  };
+
+  const payData = {
+    labels: (s?.byPayment ?? []).map((p) => PAYMENT_LABELS[p._id] ?? p._id),
+    datasets: [
+      {
+        data: (s?.byPayment ?? []).map((p) => p.revenue),
+        backgroundColor: [LEAF, AMBER, PINE],
+        borderWidth: 0,
+      },
+    ],
+  };
+
+  const moneyTooltip = {
+    callbacks: {
+      label: (ctx: { parsed: unknown }) => {
+        const p = ctx.parsed as number | { y?: number | null };
+        const v = typeof p === "number" ? p : (p?.y ?? 0);
+        return ` ${formatMoney(v)}`;
+      },
+    },
+  };
+
+  const axisOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: moneyTooltip },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: MUTED, font: { size: 11 } } },
+      y: {
+        grid: { color: GRID },
+        ticks: { color: MUTED, font: { size: 11 }, callback: moneyTicks },
+        beginAtZero: true,
+      },
+    },
+  } as const;
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <PageTitle title="Tổng quan" />
       <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Stat icon={<Banknote size={16} />} label="Doanh thu hôm nay" value={formatMoney(s?.today.revenue ?? 0)} />
@@ -34,30 +144,50 @@ export default function DashboardClient({ initial }: { initial?: Stats }) {
         <Stat icon={<TrendingUp size={16} />} label="Hóa đơn tháng này" value={`${s?.month.count ?? 0}`} />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <section className="rounded-xl border border-line bg-surface p-5">
-          <h2 className="mb-4 text-sm font-bold">Doanh thu 7 ngày gần nhất</h2>
+      <div className="mb-4 grid gap-4 lg:grid-cols-3">
+        <section className="rounded-xl border border-line bg-surface p-5 lg:col-span-2">
+          <h2 className="mb-4 text-sm font-bold">Doanh thu 30 ngày gần nhất</h2>
           {!s || s.daily.length === 0 ? (
             <Empty message="Chưa có dữ liệu bán hàng" />
           ) : (
-            <ul className="space-y-2.5">
-              {s.daily.map((d) => (
-                <li key={d._id} className="grid grid-cols-[74px_1fr_auto] items-center gap-3 text-sm">
-                  <span className="text-xs text-muted">
-                    {new Date(d._id).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" })}
-                  </span>
-                  <div className="h-5 rounded bg-paper">
-                    <div
-                      className="h-5 rounded bg-leaf"
-                      style={{ width: `${Math.max(2, (d.revenue / maxDaily) * 100)}%` }}
-                      role="img"
-                      aria-label={`${formatMoney(d.revenue)}, ${d.count} hóa đơn`}
-                    />
-                  </div>
-                  <span className="money text-right font-semibold">{formatMoney(d.revenue)}</span>
-                </li>
-              ))}
-            </ul>
+            <div className="h-64">
+              <Line data={lineData} options={axisOptions} />
+            </div>
+          )}
+        </section>
+
+        <section className="rounded-xl border border-line bg-surface p-5">
+          <h2 className="mb-4 text-sm font-bold">Cơ cấu thanh toán tháng này</h2>
+          {!s || s.byPayment.length === 0 ? (
+            <Empty message="Chưa có dữ liệu bán hàng" />
+          ) : (
+            <div className="h-64">
+              <Doughnut
+                data={payData}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  cutout: "62%",
+                  plugins: {
+                    legend: { position: "bottom", labels: { color: MUTED, boxWidth: 12 } },
+                    tooltip: moneyTooltip,
+                  },
+                }}
+              />
+            </div>
+          )}
+        </section>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <section className="rounded-xl border border-line bg-surface p-5">
+          <h2 className="mb-4 text-sm font-bold">Doanh thu 12 tháng</h2>
+          {!s || s.monthly.length === 0 ? (
+            <Empty message="Chưa có dữ liệu bán hàng" />
+          ) : (
+            <div className="h-64">
+              <Bar data={barData} options={axisOptions} />
+            </div>
           )}
         </section>
 
@@ -66,7 +196,7 @@ export default function DashboardClient({ initial }: { initial?: Stats }) {
           {!s || s.topProducts.length === 0 ? (
             <Empty message="Chưa có dữ liệu bán hàng" />
           ) : (
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[720px] text-sm">
               <thead className="text-left text-xs font-semibold text-muted">
                 <tr>
                   <th className="pb-2">Sản phẩm</th>

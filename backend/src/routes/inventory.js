@@ -2,6 +2,7 @@ import { Router } from "express";
 import InventoryBatch from "../models/InventoryBatch.js";
 import Product from "../models/Product.js";
 import { protect, authorize } from "../middleware/auth.js";
+import { getSettings } from "../lib/settings.js";
 
 const router = Router();
 router.use(protect);
@@ -45,25 +46,41 @@ router.get("/batches", async (req, res) => {
   res.json({ batches, total, page: Number(page), limit: Number(limit) });
 });
 
-// Điều chỉnh tồn của một lô (hủy hàng hỏng/hết hạn)
+// Sửa lô: nhập nhầm số lượng/HSD, hoặc điều chỉnh tồn (hủy hàng hỏng/hết hạn)
 router.put("/batches/:id", authorize(...CAN_MANAGE), async (req, res) => {
-  const { remaining, note } = req.body;
+  const { quantityIn, remaining, expiryDate, note } = req.body;
   const batch = await InventoryBatch.findById(req.params.id);
   if (!batch) return res.status(404).json({ message: "Không tìm thấy lô hàng" });
+  if (quantityIn != null) {
+    // Sửa số lượng nhập giữ nguyên số đã xuất: remaining dịch theo cùng chênh lệch
+    const sold = batch.quantityIn - batch.remaining;
+    if (quantityIn < 1 || quantityIn < sold)
+      return res
+        .status(400)
+        .json({ message: `Số lượng nhập không hợp lệ (lô này đã xuất ${sold})` });
+    batch.quantityIn = quantityIn;
+    batch.remaining = quantityIn - sold;
+  }
   if (remaining != null) {
     if (remaining < 0 || remaining > batch.quantityIn)
       return res.status(400).json({ message: "Số lượng còn lại không hợp lệ" });
     batch.remaining = remaining;
   }
+  if (expiryDate !== undefined) batch.expiryDate = expiryDate ? new Date(expiryDate) : null;
   if (note != null) batch.note = note;
   await batch.save();
+  await batch.populate([
+    { path: "product", select: "name barcode unit image" },
+    { path: "createdBy", select: "name" },
+  ]);
   res.json({ batch });
 });
 
-// Cảnh báo: lô sắp hết hạn và sản phẩm sắp hết hàng
+// Cảnh báo: lô sắp hết hạn và sản phẩm sắp hết hàng (ngưỡng mặc định lấy từ Cài đặt)
 router.get("/alerts", async (req, res) => {
-  const expiryDays = Number(req.query.expiryDays || 30);
-  const lowStockThreshold = Number(req.query.lowStock || 10);
+  const settings = await getSettings();
+  const expiryDays = Number(req.query.expiryDays || settings.expiryWarningDays);
+  const lowStockThreshold = Number(req.query.lowStock || settings.lowStockThreshold);
   const soon = new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000);
 
   const expiringBatches = await InventoryBatch.find({

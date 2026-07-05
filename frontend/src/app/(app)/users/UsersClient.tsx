@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Plus, Pencil } from "lucide-react";
 import { api } from "@/lib/api";
 import { formatDate } from "@/lib/format";
-import { btn, input, label, Modal, Badge, PageTitle } from "@/components/ui";
+import { btn, input, label, Modal, Badge, PageTitle, AppSelect } from "@/components/ui";
 import type { Role, User } from "@/lib/types";
 
 const ROLE_LABELS: Record<Role, string> = {
@@ -25,7 +25,7 @@ export default function UsersClient({ initial }: { initial?: { users: User[] } }
   });
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <PageTitle
         title="Nhân viên"
         action={
@@ -34,8 +34,8 @@ export default function UsersClient({ initial }: { initial?: { users: User[] } }
           </button>
         }
       />
-      <div className="overflow-hidden rounded-xl border border-line bg-surface">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto rounded-xl border border-line bg-surface">
+        <table className="w-full min-w-[720px] text-sm">
           <thead className="bg-paper text-left text-xs font-semibold text-muted">
             <tr>
               <th className="px-4 py-3">Họ tên</th>
@@ -73,6 +73,7 @@ export default function UsersClient({ initial }: { initial?: { users: User[] } }
 
 function UserForm({ user, onClose }: { user: User | null; onClose: () => void }) {
   const qc = useQueryClient();
+  const [role, setRole] = useState<Role>(user?.role ?? "CASHIER");
   const save = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
       user ? api(`/users/${user._id}`, { method: "PUT", body }) : api("/users", { method: "POST", body }),
@@ -93,7 +94,7 @@ function UserForm({ user, onClose }: { user: User | null; onClose: () => void })
           const fd = new FormData(e.currentTarget);
           const body: Record<string, unknown> = {
             name: fd.get("name"),
-            role: fd.get("role"),
+            role,
           };
           const password = fd.get("password") as string;
           if (password) body.password = password;
@@ -118,13 +119,11 @@ function UserForm({ user, onClose }: { user: User | null; onClose: () => void })
         </div>
         <div>
           <label className={label}>Vai trò</label>
-          <select name="role" defaultValue={user?.role ?? "CASHIER"} className={input}>
-            {Object.entries(ROLE_LABELS).map(([value, text]) => (
-              <option key={value} value={value}>
-                {text}
-              </option>
-            ))}
-          </select>
+          <AppSelect
+            value={role}
+            onValueChange={(v) => setRole(v as Role)}
+            options={Object.entries(ROLE_LABELS).map(([value, text]) => ({ value, label: text }))}
+          />
         </div>
         {user && (
           <label className="flex items-center gap-2 text-sm">
