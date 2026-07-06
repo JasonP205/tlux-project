@@ -171,7 +171,7 @@ export function ReceiptContent({ order, settings: s }: { order: Order; settings?
             {s?.receiptReturnNote ?? "Đổi trả trong 3 ngày kèm hóa đơn"}
           </div>
         )}
-        <span style={{}}>Một sản phẩm của Jason Dev</span>
+        <p style={{}}>Một sản phẩm của <u>hwagfu.dev</u></p>
       </div>
     </div>
   );

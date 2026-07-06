@@ -89,7 +89,7 @@ export default function DisplayClient({ cashierId }: { cashierId: string }) {
                     <td className="py-2.5 font-semibold">
                       {it.name}
                       {it.discountPercent > 0 && (
-                        <span className="ml-2 text-sm font-bold text-green-300">−{it.discountPercent}%</span>
+                        <span className="ml-2 text-sm font-bold text-emerald-300">−{it.discountPercent}%</span>
                       )}
                     </td>
                     <td className="money py-2.5 text-center">{it.qty}</td>
@@ -135,7 +135,7 @@ export default function DisplayClient({ cashierId }: { cashierId: string }) {
                       ? "CHỜ THANH TOÁN"
                       : "TỔNG CỘNG"}
                 </span>
-                <span className={`money text-5xl font-extrabold ${paid ? "text-green-400" : "text-amber"}`}>
+                <span className={`money text-5xl font-extrabold ${paid ? "text-emerald-400" : "text-amber"}`}>
                   {formatMoney(order.total)}
                 </span>
               </div>
@@ -149,7 +149,7 @@ export default function DisplayClient({ cashierId }: { cashierId: string }) {
 
 function Row({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div className={`flex justify-between text-base ${accent ? "text-green-300" : "text-white/60"}`}>
+    <div className={`flex justify-between text-base ${accent ? "text-emerald-300" : "text-white/60"}`}>
       <span>{label}</span>
       <span className="money">{value}</span>
     </div>

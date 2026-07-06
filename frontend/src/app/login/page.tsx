@@ -28,13 +28,16 @@ export default function LoginPage() {
   });
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-pine p-4">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-paper p-4">
+      {/* Nền gradient mềm đồng bộ landing page */}
+      <div className="absolute left-1/10 top-1/6 -z-0 h-96 w-96 rounded-full bg-emerald-500/5 blur-3xl" />
+      <div className="absolute bottom-1/6 right-1/10 -z-0 h-[450px] w-[450px] rounded-full bg-cyan-500/5 blur-3xl" />
       <form
         onSubmit={(e) => {
           e.preventDefault();
           login.mutate();
         }}
-        className="w-full max-w-sm rounded-2xl bg-surface p-8 shadow-xl"
+        className="z-10 w-full max-w-sm rounded-2xl bg-surface p-8 shadow-xl ring-1 ring-line"
       >
         <div className="mb-6 flex flex-col items-center gap-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}

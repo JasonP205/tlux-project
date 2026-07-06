@@ -3,21 +3,22 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Palette đồng bộ với landing page: nền slate trung tính + emerald làm màu chủ đạo */
 @theme {
-  --color-paper: #f5f6f2;
+  --color-paper: #f8fafc;
   --color-surface: #ffffff;
-  --color-ink: #1a2620;
-  --color-muted: #5e6b63;
-  --color-line: #e3e7e0;
-  --color-leaf: #0e7a46;
-  --color-leaf-dark: #0a5f36;
-  --color-leaf-soft: #e7f3ec;
-  --color-pine: #142a1e;
-  --color-pine-light: #1e3b2b;
-  --color-amber: #e8a23b;
-  --color-amber-soft: #fdf3e2;
-  --color-danger: #d64545;
-  --color-danger-soft: #fbeaea;
+  --color-ink: #0f172a;
+  --color-muted: #64748b;
+  --color-line: #e2e8f0;
+  --color-leaf: #10b981;
+  --color-leaf-dark: #059669;
+  --color-leaf-soft: #ecfdf5;
+  --color-pine: #0f172a;
+  --color-pine-light: #1e293b;
+  --color-amber: #f59e0b;
+  --color-amber-soft: #fef3c7;
+  --color-danger: #ef4444;
+  --color-danger-soft: #fee2e2;
 
   --font-sans: var(--font-be-vietnam), system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), monospace;
@@ -115,38 +116,38 @@ body {
 
 :root {
   --background: #ffffff;
-  --foreground: #1a2620;
+  --foreground: #0f172a;
   --card: #ffffff;
-  --card-foreground: #1a2620;
+  --card-foreground: #0f172a;
   --popover: #ffffff;
-  --popover-foreground: #1a2620;
-  --primary: #0e7a46;
+  --popover-foreground: #0f172a;
+  --primary: #10b981;
   --primary-foreground: #ffffff;
-  --secondary: #f5f6f2;
-  --secondary-foreground: #1a2620;
-  --muted: #f5f6f2;
-  --muted-foreground: #5e6b63;
-  --accent: #e7f3ec;
-  --accent-foreground: #0a5f36;
-  --destructive: #d64545;
-  --border: #e3e7e0;
-  --input: #e3e7e0;
-  --ring: #0e7a46;
-  --chart-1: #0e7a46;
-  --chart-2: #e8a23b;
-  --chart-3: #142a1e;
-  --chart-4: #7fb99a;
-  --chart-5: #d64545;
-  --radius: 0.625rem;
-  /* Sidebar tối màu pine theo nhận diện TLUX */
-  --sidebar: #142a1e;
+  --secondary: #f8fafc;
+  --secondary-foreground: #0f172a;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --accent: #ecfdf5;
+  --accent-foreground: #047857;
+  --destructive: #ef4444;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #10b981;
+  --chart-1: #10b981;
+  --chart-2: #f59e0b;
+  --chart-3: #0f172a;
+  --chart-4: #6ee7b7;
+  --chart-5: #ef4444;
+  --radius: 0.75rem;
+  /* Sidebar tối slate-900 đồng bộ landing page */
+  --sidebar: #0f172a;
   --sidebar-foreground: rgba(255, 255, 255, 0.85);
-  --sidebar-primary: #0e7a46;
+  --sidebar-primary: #10b981;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1e3b2b;
+  --sidebar-accent: #1e293b;
   --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: rgba(255, 255, 255, 0.1);
-  --sidebar-ring: #0e7a46;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: #10b981;
 }
 
 .dark {

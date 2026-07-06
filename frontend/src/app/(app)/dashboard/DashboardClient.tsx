@@ -40,11 +40,11 @@ export interface Stats {
   topProducts: { _id: string; name: string; qty: number; revenue: number }[];
 }
 
-const LEAF = "#0e7a46";
-const AMBER = "#e8a23b";
-const PINE = "#142a1e";
-const GRID = "#e3e7e0";
-const MUTED = "#5e6b63";
+const LEAF = "#10b981";
+const AMBER = "#f59e0b";
+const PINE = "#0f172a";
+const GRID = "#e2e8f0";
+const MUTED = "#64748b";
 
 const PAYMENT_LABELS: Record<string, string> = { CASH: "Tiền mặt", PAYOS: "Chuyển khoản" };
 
@@ -74,7 +74,7 @@ export default function DashboardClient({ initial }: { initial?: Stats }) {
         label: "Doanh thu",
         data: (s?.daily ?? []).map((d) => d.revenue),
         borderColor: LEAF,
-        backgroundColor: "rgba(14, 122, 70, 0.12)",
+        backgroundColor: "rgba(16, 185, 129, 0.12)",
         fill: true,
         tension: 0.35,
         pointRadius: 3,
