@@ -18,6 +18,7 @@ import { Line, Bar, Doughnut } from "react-chartjs-2";
 import { api } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
 import { Empty, PageTitle } from "@/components/ui";
+import { Skeleton } from "@/components/ui/skeleton";
 
 ChartJS.register(
   CategoryScale,
@@ -147,7 +148,9 @@ export default function DashboardClient({ initial }: { initial?: Stats }) {
       <div className="mb-4 grid gap-4 lg:grid-cols-3">
         <section className="rounded-xl border border-line bg-surface p-5 lg:col-span-2">
           <h2 className="mb-4 text-sm font-bold">Doanh thu 30 ngày gần nhất</h2>
-          {!s || s.daily.length === 0 ? (
+          {!s ? (
+            <Skeleton className="h-64 w-full rounded-lg" />
+          ) : s.daily.length === 0 ? (
             <Empty message="Chưa có dữ liệu bán hàng" />
           ) : (
             <div className="h-64">
@@ -158,7 +161,9 @@ export default function DashboardClient({ initial }: { initial?: Stats }) {
 
         <section className="rounded-xl border border-line bg-surface p-5">
           <h2 className="mb-4 text-sm font-bold">Cơ cấu thanh toán tháng này</h2>
-          {!s || s.byPayment.length === 0 ? (
+          {!s ? (
+            <Skeleton className="h-64 w-full rounded-lg" />
+          ) : s.byPayment.length === 0 ? (
             <Empty message="Chưa có dữ liệu bán hàng" />
           ) : (
             <div className="h-64">
@@ -182,7 +187,9 @@ export default function DashboardClient({ initial }: { initial?: Stats }) {
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="rounded-xl border border-line bg-surface p-5">
           <h2 className="mb-4 text-sm font-bold">Doanh thu 12 tháng</h2>
-          {!s || s.monthly.length === 0 ? (
+          {!s ? (
+            <Skeleton className="h-64 w-full rounded-lg" />
+          ) : s.monthly.length === 0 ? (
             <Empty message="Chưa có dữ liệu bán hàng" />
           ) : (
             <div className="h-64">
@@ -193,7 +200,9 @@ export default function DashboardClient({ initial }: { initial?: Stats }) {
 
         <section className="rounded-xl border border-line bg-surface p-5">
           <h2 className="mb-4 text-sm font-bold">Bán chạy nhất tháng</h2>
-          {!s || s.topProducts.length === 0 ? (
+          {!s ? (
+            <Skeleton className="h-64 w-full rounded-lg" />
+          ) : s.topProducts.length === 0 ? (
             <Empty message="Chưa có dữ liệu bán hàng" />
           ) : (
             <table className="w-full min-w-[720px] text-sm">

@@ -6,7 +6,7 @@ import { ChevronDown, ChevronRight, Printer, ScanBarcode } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { formatMoney, formatDateTime, itemLineTotal } from "@/lib/format";
-import { btn, input, Modal, Badge, Empty, PageTitle, AppSelect } from "@/components/ui";
+import { btn, input, Modal, Badge, Empty, PageTitle, AppSelect, TableSkeleton } from "@/components/ui";
 import ReceiptDialog from "@/components/pos/ReceiptDialog";
 import type { Order, OrderStatus } from "@/lib/types";
 
@@ -89,7 +89,11 @@ export default function OrdersClient({ initial }: { initial?: { orders: Order[];
         />
       </div>
 
-      <OrdersTable orders={activeOrders} onPick={setDetail} empty="Không có hóa đơn nào" />
+      {!orders.data ? (
+        <TableSkeleton />
+      ) : (
+        <OrdersTable orders={activeOrders} onPick={setDetail} empty="Không có hóa đơn nào" />
+      )}
 
       {/* Hóa đơn đã hủy: tách riêng, mặc định thu gọn */}
       {cancelledOrders.length > 0 && (

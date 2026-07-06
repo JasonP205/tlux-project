@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Plus, Search, Star, CreditCard } from "lucide-react";
 import { api } from "@/lib/api";
 import { formatDate } from "@/lib/format";
-import { btn, input, label, Modal, Empty, PageTitle } from "@/components/ui";
+import { btn, input, label, Modal, Empty, PageTitle, TableSkeleton } from "@/components/ui";
 import { BarcodeModal } from "@/components/BarcodeCard";
 import type { Customer } from "@/lib/types";
 
@@ -41,6 +41,9 @@ export default function CustomersClient({ initial }: { initial?: { customers: Cu
           onChange={(e) => setQ(e.target.value)}
         />
       </div>
+      {!customers.data ? (
+        <TableSkeleton />
+      ) : (
       <div className="overflow-x-auto rounded-xl border border-line bg-surface">
         <table className="w-full min-w-[720px] text-sm">
           <thead className="bg-paper text-left text-xs font-semibold text-muted">
@@ -86,6 +89,7 @@ export default function CustomersClient({ initial }: { initial?: { customers: Cu
         </table>
         {customers.data?.customers.length === 0 && <Empty message="Chưa có khách hàng nào" />}
       </div>
+      )}
       {creating && <CustomerForm onClose={() => setCreating(false)} />}
       {card && (
         <BarcodeModal

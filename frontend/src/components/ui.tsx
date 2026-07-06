@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 export const btn = {
@@ -165,6 +166,28 @@ export function Badge({
     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${tones[tone]}`}>
       {children}
     </span>
+  );
+}
+
+// Skeleton bảng dùng chung khi chờ dữ liệu (SSR fail / API chậm / đổi bộ lọc)
+export function TableSkeleton({ rows = 8, avatar = false }: { rows?: number; avatar?: boolean }) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-line bg-surface">
+      <div className="bg-paper px-4 py-3.5">
+        <Skeleton className="h-3.5 w-2/5" />
+      </div>
+      <div className="divide-y divide-line">
+        {Array.from({ length: rows }).map((_, i) => (
+          <div key={i} className="flex items-center gap-4 px-4 py-3">
+            {avatar && <Skeleton className="h-10 w-10 shrink-0 rounded-lg" />}
+            <Skeleton className="h-4 flex-[3]" />
+            <Skeleton className="hidden h-4 flex-[2] sm:block" />
+            <Skeleton className="hidden h-4 flex-[2] md:block" />
+            <Skeleton className="h-4 flex-1" />
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 

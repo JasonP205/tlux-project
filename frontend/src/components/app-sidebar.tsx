@@ -81,7 +81,7 @@ export function AppSidebar({
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarMenu>
+          <SidebarMenu className="gap-2">
             {menuFor(user.role).map((m) => (
               <SidebarMenuItem key={m.href}>
                 <SidebarMenuButton

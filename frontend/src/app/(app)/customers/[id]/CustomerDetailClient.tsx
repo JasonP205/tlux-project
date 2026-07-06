@@ -5,7 +5,8 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Star, Phone, Mail, ReceiptText } from "lucide-react";
 import { api } from "@/lib/api";
 import { formatMoney, formatDateTime } from "@/lib/format";
-import { Badge, Empty } from "@/components/ui";
+import { Badge, Empty, TableSkeleton } from "@/components/ui";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { Customer, Order } from "@/lib/types";
 
 type Detail = { customer: Customer; orders: Order[]; totalSpent: number };
@@ -17,7 +18,18 @@ export default function CustomerDetailClient({ id, initial }: { id: string; init
     initialData: initial,
   });
 
-  if (isLoading) return <div className="p-6 text-muted">Đang tải…</div>;
+  if (isLoading)
+    return (
+      <div className="space-y-4 p-4 sm:p-6">
+        <Skeleton className="h-7 w-56" />
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Skeleton className="h-24 rounded-xl" />
+          <Skeleton className="h-24 rounded-xl" />
+          <Skeleton className="h-24 rounded-xl" />
+        </div>
+        <TableSkeleton rows={5} />
+      </div>
+    );
   if (!data) return <div className="p-6 text-muted">Không tìm thấy khách hàng</div>;
 
   const { customer, orders, totalSpent } = data;

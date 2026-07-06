@@ -7,6 +7,7 @@ import { Store, ReceiptText, Percent, Star, Warehouse, Eye } from "lucide-react"
 import { api } from "@/lib/api";
 import { btn, input, label, PageTitle, AppSelect } from "@/components/ui";
 import { ReceiptContent } from "@/components/pos/ReceiptDialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { Order, Settings } from "@/lib/types";
 
 // Hóa đơn mẫu cho khung preview
@@ -76,7 +77,15 @@ export default function SettingsClient({ initial }: { initial?: { settings: Sett
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (!form) return null;
+  if (!form)
+    return (
+      <div className="space-y-4 p-4 sm:p-6">
+        <Skeleton className="h-7 w-64" />
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-40 w-full rounded-xl" />
+        ))}
+      </div>
+    );
   const set = <K extends keyof Settings>(key: K, value: Settings[K]) =>
     setDraft((d) => ({ ...d, [key]: value }));
 

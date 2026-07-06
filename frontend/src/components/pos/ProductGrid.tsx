@@ -2,7 +2,28 @@
 
 import { formatMoney } from "@/lib/format";
 import { Empty } from "@/components/ui";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { Product } from "@/lib/types";
+
+// Khung xương thẻ sản phẩm khi đang tải / đang tìm
+function GridSkeleton() {
+  return (
+    <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-4">
+      {Array.from({ length: 8 }).map((_, i) => (
+        <div key={i} className="overflow-hidden rounded-xl border border-line bg-surface">
+          <Skeleton className="h-24 w-full rounded-none" />
+          <div className="space-y-2 p-2.5">
+            <Skeleton className="h-4 w-4/5" />
+            <div className="flex justify-between pt-1">
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-3.5 w-10" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function ProductGrid({
   products,
@@ -15,8 +36,8 @@ export default function ProductGrid({
   hasQuery: boolean;
   onPick: (p: Product) => void;
 }) {
-  if (searching && hasQuery) return <Empty message="Đang tìm…" />;
-  if (!products || products.length === 0)
+  if ((searching && hasQuery) || !products) return <GridSkeleton />;
+  if (products.length === 0)
     return <Empty message={hasQuery ? "Không tìm thấy sản phẩm" : "Chưa có sản phẩm"} />;
 
   return (

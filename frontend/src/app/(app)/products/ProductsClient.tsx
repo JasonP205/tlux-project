@@ -9,7 +9,7 @@ import { Plus, Pencil, Trash2, Search, Barcode, ChevronLeft, ChevronRight, Ticke
 import { api } from "@/lib/api";
 import { formatMoney, formatDate, daysUntil } from "@/lib/format";
 import { useMe } from "@/lib/hooks";
-import { btn, input, label, Modal, Badge, Empty, PageTitle, AppSelect, ConfirmDialog } from "@/components/ui";
+import { btn, input, label, Modal, Badge, Empty, PageTitle, AppSelect, ConfirmDialog, TableSkeleton } from "@/components/ui";
 import ProductForm from "@/components/ProductForm";
 import { BarcodeSvg, printBarcode } from "@/components/BarcodeCard";
 import type { Category, Product } from "@/lib/types";
@@ -112,6 +112,9 @@ export default function ProductsClient({
         />
       </div>
 
+      {!products.data ? (
+        <TableSkeleton avatar />
+      ) : (
       <div className="overflow-x-auto rounded-xl border border-line bg-surface">
         <table className="w-full min-w-[720px] text-sm">
           <thead className="bg-paper text-left text-xs font-semibold text-muted">
@@ -198,6 +201,7 @@ export default function ProductsClient({
         </table>
         {products.data?.products.length === 0 && <Empty message="Không có sản phẩm nào" />}
       </div>
+      )}
 
       {/* Phân trang: 20 sản phẩm/trang, URL dạng /products?page=2&category=banhkeo */}
       {!q && totalPages > 1 && (

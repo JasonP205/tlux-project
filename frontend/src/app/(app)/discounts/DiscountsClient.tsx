@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Plus, Trash2, Power, Barcode } from "lucide-react";
 import { api } from "@/lib/api";
 import { formatMoney, formatDate } from "@/lib/format";
-import { btn, input, label, Modal, Badge, Empty, PageTitle, AppSelect, ConfirmDialog } from "@/components/ui";
+import { btn, input, label, Modal, Badge, Empty, PageTitle, AppSelect, ConfirmDialog, TableSkeleton } from "@/components/ui";
 import { BarcodeModal } from "@/components/BarcodeCard";
 import type { DiscountCode } from "@/lib/types";
 
@@ -47,6 +47,9 @@ export default function DiscountsClient({ initial }: { initial?: { discounts: Di
           </button>
         }
       />
+      {!discounts.data ? (
+        <TableSkeleton />
+      ) : (
       <div className="overflow-x-auto rounded-xl border border-line bg-surface">
         <table className="w-full min-w-[720px] text-sm">
           <thead className="bg-paper text-left text-xs font-semibold text-muted">
@@ -105,6 +108,7 @@ export default function DiscountsClient({ initial }: { initial?: { discounts: Di
         </table>
         {discounts.data?.discounts.length === 0 && <Empty message="Chưa có mã giảm giá nào" />}
       </div>
+      )}
       {creating && <DiscountForm onClose={() => setCreating(false)} />}
       {viewingBarcode && (
         <BarcodeModal

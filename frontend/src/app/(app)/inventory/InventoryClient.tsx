@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { PackagePlus, AlertTriangle, CalendarClock, Smartphone, Pencil } from "lucide-react";
 import { api } from "@/lib/api";
 import { formatDate, daysUntil } from "@/lib/format";
-import { btn, input, label, Modal, Badge, Empty, PageTitle } from "@/components/ui";
+import { btn, input, label, Modal, Badge, Empty, PageTitle, TableSkeleton } from "@/components/ui";
 import ProductForm from "@/components/ProductForm";
 import PhoneScanModal from "@/components/pos/PhoneScanModal";
 import type { Category, InventoryBatch, Product } from "@/lib/types";
@@ -96,6 +96,9 @@ export default function InventoryClient({
         </div>
       )}
 
+      {!batches.data ? (
+        <TableSkeleton />
+      ) : (
       <div className="overflow-x-auto rounded-xl border border-line bg-surface">
         <table className="w-full min-w-[720px] text-sm">
           <thead className="bg-paper text-left text-xs font-semibold text-muted">
@@ -150,6 +153,7 @@ export default function InventoryClient({
         </table>
         {batches.data?.batches.length === 0 && <Empty message="Chưa có lô hàng nào — nhấn Nhập kho để bắt đầu" />}
       </div>
+      )}
 
       {showImport && <ImportModal onClose={() => setShowImport(false)} />}
       {editingBatch && <EditBatchModal batch={editingBatch} onClose={() => setEditingBatch(null)} />}

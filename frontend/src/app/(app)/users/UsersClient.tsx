@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Plus, Pencil } from "lucide-react";
 import { api } from "@/lib/api";
 import { formatDate } from "@/lib/format";
-import { btn, input, label, Modal, Badge, PageTitle, AppSelect } from "@/components/ui";
+import { btn, input, label, Modal, Badge, PageTitle, AppSelect, TableSkeleton } from "@/components/ui";
 import type { Role, User } from "@/lib/types";
 
 const ROLE_LABELS: Record<Role, string> = {
@@ -34,6 +34,9 @@ export default function UsersClient({ initial }: { initial?: { users: User[] } }
           </button>
         }
       />
+      {!users.data ? (
+        <TableSkeleton rows={5} />
+      ) : (
       <div className="overflow-x-auto rounded-xl border border-line bg-surface">
         <table className="w-full min-w-[720px] text-sm">
           <thead className="bg-paper text-left text-xs font-semibold text-muted">
@@ -66,6 +69,7 @@ export default function UsersClient({ initial }: { initial?: { users: User[] } }
           </tbody>
         </table>
       </div>
+      )}
       {editing && <UserForm user={editing === "new" ? null : editing} onClose={() => setEditing(null)} />}
     </div>
   );
