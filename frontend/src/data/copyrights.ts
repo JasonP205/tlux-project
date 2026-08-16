@@ -91,7 +91,7 @@ export const PROJECTS: Project[] = [
       en: "An internal operations platform for retail stores, built on the Next.js App Router with Express and MongoDB. Stock is never stored on the product — it is the sum of what remains across intake batches — so every checkout draws down stock FEFO, earliest expiry first, inside a transaction that records exactly which batches were consumed. Cashiers keep several invoices open at once; each one is a draft order held server-side, so parked carts survive a page reload. Barcodes come from a USB reader or from a phone camera paired over QR and socket.io, and the code's prefix tells the register whether it is a product, a per-line discount label, a promo code or a member card. It also ships a customer-facing second screen that mirrors the cart and the PayOS transfer QR in realtime, accent-insensitive Vietnamese fuzzy search via Elasticsearch, four-role access control, a loyalty-points ledger, and 80mm thermal receipts.",
     },
     image: [
-      { src: abs("/logo.png"), alt: "Logo TLUX" },
+      { src: `https://api.microlink.io?screenshot&url=${encodeURIComponent(SITE_URL)}`, alt: "Logo TLUX" },
     ],
     tags: [
       "Next.js",
